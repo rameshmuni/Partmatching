@@ -1,0 +1,134 @@
+import openpyxl
+from openpyxl.workbook import Workbook
+import pandas as pd
+import numpy as np
+import os
+#import pandas as pd
+from datetime import datetime
+import datetime
+import string
+
+
+class partmatching:
+    def __init__(self,oldexcel,newexcel,outputexcel):
+        self.oldexcel=oldexcel
+        self.newexcel=newexcel
+        self.outputexcel=outputexcel
+
+    def statusmatching(self):
+        wb = openpyxl.load_workbook(self.newexcel)
+        ws = wb['PART_MATCHING']
+        df1=pd.read_excel(self.newexcel,sheetname="PART_MATCHING")
+        wb1 = openpyxl.load_workbook(self.oldexcel)
+        ws1 = wb1['PART_MATCHING']
+        df2 = pd.read_excel(self.oldexcel,sheetname="PART_MATCHING")
+
+        ws2=wb.create_sheet("QA")
+        ws2.cell(row=1, column=1, value='part')
+        ws2.cell(row=1, column=2, value='status category')
+        ws2.cell(row=1, column=3, value='old status')
+        ws2.cell(row=1, column=4, value='new status')
+
+        rm = ws.max_row + 1
+        rm1 = ws1.max_row + 1
+        statuschange=False
+        newlyadded=False
+        deleted=False
+        count=1
+
+        oldpartlist=[]
+        newpartlist=[]
+
+        oldpartcolumn=df2.loc[:,'MFR_PART_NUMBER']
+        oldpartlist=oldpartcolumn.values
+
+        newpartcolumn = df1.loc[:, 'MFR_PART_NUMBER']
+        newpartlist = newpartcolumn.values
+
+        for i in range(2,rm):
+            statuschange=False
+            newlyadded=False
+            part=ws.cell(row=i,column=1).value
+            status=ws.cell(row=i,column=4).value
+
+            for j in range(2,rm1):
+                oldpart = ws1.cell(row=j, column=1).value
+                oldstatus = ws1.cell(row=j, column=4).value
+                if part==oldpart:
+
+                    if str(status) != str(oldstatus):
+                        statuschange = True
+                        count = count + 1
+                        break
+
+            if part  not in oldpartlist:
+                newlyadded=True
+                count=count+1
+
+            if statuschange==True:
+
+                ws2.cell(row=count,column=1,value=part)
+                ws2.cell(row=count, column=2, value="Status Changed")
+                ws2.cell(row=count,column=3,value=oldstatus)
+                ws2.cell(row=count, column=4, value=status)
+                wb.save(self.outputexcel)
+
+            if newlyadded==True:
+                ws2.cell(row=count, column=1, value=part)
+                ws2.cell(row=count, column=2, value="Newly Added")
+                ws2.cell(row=count, column=4, value=status)
+                wb.save(self.outputexcel)
+
+        for m in oldpartlist:
+            if m not in newpartlist:
+                deleted=True
+                count=count+1
+                break
+
+        if deleted==True:
+            ws2.cell(row=count, column=1, value=oldpart)
+            ws2.cell(row=count, column=2, value="Deleted")
+            wb.save(self.outputexcel)
+
+today = datetime.datetime.today()
+first = today.replace(day=1)
+lastMonth = first - datetime.timedelta(days=1)
+prevmonth=lastMonth.strftime("%b").upper()
+currentday=today.strftime("%d")
+month=today.strftime("%b").upper()
+if month=='JAN':
+
+    year=str(int(str(today.strftime("%Y"))[2:4])-1)
+
+else:
+    year=str(today.strftime("%Y"))[2:4]
+
+dir=r"C:\\Users\\ng8dba8\\PycharmProjects\\PracticeProject\\Macro\\"
+#print(dir)
+currentdirectory = dir+month+"_"+year
+olddirectory=dir+prevmonth+"_"+year
+
+currentdirectoryfilelist=[]
+olddirectoryfilelist=[]
+
+for filename in os.listdir(olddirectory):
+    olddirectoryfilelist.append(olddirectory + "\\" + filename)
+
+
+
+for filename in os.listdir(currentdirectory):
+
+    if currentday+month in filename:
+        currentdirectoryfilelist.append(currentdirectory+"\\"+filename)
+
+for i in olddirectoryfilelist:
+    for j in currentdirectoryfilelist:
+
+        if (str(j).split("\\")[-1]).split("_")[0] in i:
+            oldfile=i
+            newfile=j
+            obj1 = partmatching(oldfile, newfile, newfile)
+            obj1.statusmatching()
+
+
+
