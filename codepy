@@ -65,6 +65,8 @@ class partmatching:
                 newlyadded=True
                 count=count+1
 
+
+
             if statuschange==True:
 
                 ws2.cell(row=count,column=1,value=part)
@@ -83,12 +85,12 @@ class partmatching:
             if m not in newpartlist:
                 deleted=True
                 count=count+1
-                break
+                ws2.cell(row=count, column=1, value=oldpart)
+                ws2.cell(row=count, column=2, value="Deleted")
+                wb.save(self.outputexcel)
 
-        if deleted==True:
-            ws2.cell(row=count, column=1, value=oldpart)
-            ws2.cell(row=count, column=2, value="Deleted")
-            wb.save(self.outputexcel)
+
+
 
 today = datetime.datetime.today()
 first = today.replace(day=1)
