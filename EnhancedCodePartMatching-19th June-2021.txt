@@ -1,0 +1,264 @@
+import openpyxl
+from openpyxl.workbook import Workbook
+import pandas as pd
+import os.path
+from os import path
+import datetime
+from configparser import ConfigParser
+import pathlib
+from datetime import timedelta
+import math
+
+class partmatching:
+    def __init__(self,oldexcel,newexcel,outputexcel,instancecount):
+        self.oldexcel=oldexcel
+        self.newexcel=newexcel
+        self.outputexcel=outputexcel
+        self.instancecount=instancecount
+
+    try:
+        def statusmatching(self):
+                '''Reading old excel file data and store it in dataframe'''
+                df1 = pd.read_excel(self.oldexcel, sheet_name='PART_MATCHING')
+                '''Convert dataframe into numpy array'''
+                np1 = pd.DataFrame(df1[['MFR_PART_NUMBER', 'MFR_PART_STATUS', 'MFR_URL', 'MFR_CODE']]).to_numpy()
+
+                '''Reading new excel file data and store it in dataframe'''
+                df2 = pd.read_excel(self.newexcel, sheet_name='PART_MATCHING')
+                '''Convert dataframe into numpy array'''
+                np2 = pd.DataFrame(df2[['MFR_PART_NUMBER', 'MFR_PART_STATUS', 'MFR_URL', 'MFR_CODE']]).to_numpy()
+
+                '''Initializing all the old and new dictionaries'''
+                oldstatusdict = {}
+                newstatusdict = {}
+                oldurldict = {}
+                newurldict = {}
+                oldmfrdict = {}
+                newmfrdict = {}
+                isnantrue = False
+                ispartnan=False
+                count=0
+
+                wb = Workbook()
+                ws = wb.create_sheet("QA")
+                ws.cell(row=1, column=1, value='MFR_PART_NUMBER')
+                ws.cell(row=1, column=2, value='MFR_OLD_STATUS')
+                ws.cell(row=1, column=3, value='MFR_NEW_STATUS')
+                ws.cell(row=1, column=4, value='MFR_URL')
+                ws.cell(row=1, column=5, value='MFR_CODE')
+                ws.cell(row=1, column=6, value='MFR_PART_OPERATION')
+                ws.cell(row=1, column=7, value='MFR_FILENAME')
+                count = ws.max_row
+                print("instance count: ",self.instancecount)
+
+                '''Create output excel file for first time processing only'''
+                '''if self.instancecount==1:
+                    wb = Workbook()
+                    ws = wb.create_sheet("QA")
+                    ws.cell(row=1, column=1, value='MFR_PART_NUMBER')
+                    ws.cell(row=1, column=2, value='MFR_OLD_STATUS')
+                    ws.cell(row=1, column=3, value='MFR_NEW_STATUS')
+                    ws.cell(row=1, column=4, value='MFR_URL')
+                    ws.cell(row=1, column=5, value='MFR_CODE')
+                    ws.cell(row=1, column=6, value='MFR_PART_OPERATION')
+                    ws.cell(row=1, column=7, value='MFR_FILENAME')
+                    count = ws.max_row
+                    print("First time run")
+
+                else:
+
+                    if path.exists(self.outputexcel):
+                        wb=openpyxl.load_workbook(outputfile)
+                        ws=wb['QA']
+                        count = ws.max_row
+'''
+                '''Assigning excel values from numpy arrays  to dictionaries'''
+                for x in np2:
+                    newstatusdict[x[0]] = x[1]
+                    newurldict[x[0]] = x[2]
+                    newmfrdict[x[0]] = x[3]
+                for x in np1:
+                    oldstatusdict[x[0]] = x[1]
+                    oldurldict[x[0]] = x[2]
+                    oldmfrdict[x[0]] = x[3]
+
+                count = count + 1
+                '''checking if there are any part number is null'''
+                for x in np2:
+                    if x[0] in oldstatusdict:
+                        if str(newstatusdict[x[0]]).replace(" ", "") == 'nan' and str(oldstatusdict[x[0]]).replace(" ", "") == 'nan':
+                            isnantrue = True
+
+                        try:
+                            if str(x[0])=="" or pd.isnull(x[0]) or pd.isna(x[0]) or len(str(x[0]))==0 or str(x[0]).strip()=='':
+                                print("part is null")
+                                ispartnan=True
+                        except:
+                            pass
+                        '''Collecting status change data'''
+                        if str(newstatusdict[x[0]]).replace(" ", "").lower() != str(oldstatusdict[x[0]]).replace(" ", "").lower() and isnantrue == False and ispartnan==False:
+                            #print("Status changed: ",x[0], newstatusdict[x[0]], oldstatusdict[x[0]])
+                            print(ws.max_row)
+                            ws.cell(row=count, column=1, value=x[0])
+                            ws.cell(row=count, column=2, value=oldstatusdict[x[0]])
+                            ws.cell(row=count, column=3, value=newstatusdict[x[0]])
+                            ws.cell(row=count, column=4, value=newurldict[x[0]])
+                            ws.cell(row=count, column=5, value=newmfrdict[x[0]])
+                            ws.cell(row=count, column=6, value="Status Changed")
+                            ws.cell(row=count, column=7, value=self.oldexcel.split("\\")[-1])
+                            count = count + 1
+                            #wb.save(self.outputexcel)
+
+                        '''Collecting newly added data'''
+                    elif ispartnan==False:
+                        #print("new added: " + str(x[0]) + " Status: " + str(newstatusdict[x[0]]))
+                        ws.cell(row=count, column=1, value=x[0])
+                        ws.cell(row=count, column=3, value=newstatusdict[x[0]])
+                        ws.cell(row=count, column=4, value=newurldict[x[0]])
+                        ws.cell(row=count, column=5, value=newmfrdict[x[0]])
+                        ws.cell(row=count, column=6, value="Added")
+                        ws.cell(row=count, column=7, value=self.oldexcel.split("\\")[-1])
+                        count = count + 1
+                        #wb.save(self.outputexcel)
+                        '''Collecting deleted data'''
+                    '''Checking if partnumber is null from old file data'''
+                for y in np1:
+                    #print(len(str(y[0])))
+                    if pd.isnull(y[0]):
+
+                        pass
+                    else :
+                     if y[0] not in newstatusdict:
+
+                        #print(str(y[0]) + " is deleted " + str(oldstatusdict[y[0]]))
+                        ws.cell(row=count, column=1, value=y[0])
+                        ws.cell(row=count, column=2, value=oldstatusdict[y[0]])
+                        ws.cell(row=count, column=4, value=oldurldict[y[0]])
+                        ws.cell(row=count, column=5, value=oldmfrdict[y[0]])
+                        ws.cell(row=count, column=6, value="Deleted")
+                        ws.cell(row=count, column=7, value=self.oldexcel.split("\\")[-1])
+                        count = count + 1
+                wb.save(self.outputexcel)
+
+                try:
+                    del wb["Sheet"]
+                except:
+                    pass
+
+
+    except Exception as e:  # most generic exception you can catch
+        logf.write("Failed to process\n",str(e))
+        pass
+
+
+'''Program Starts here
+1.Reading config file---'''
+file='C:\\Users\\priyanka.majumdar\\OneDrive - IHS Markit\\Priyanka\\MONTHLY_TRIGGERING_2020\\PART MATCHING PYTHON\\Config.ini'
+config=ConfigParser()
+config.read(file)
+
+'''2.Getting the input directories'''
+today = datetime.datetime.today()
+first = today.replace(day=1)
+lastMonth = first - datetime.timedelta(days=1)
+prevmonth=lastMonth.strftime("%b").upper()
+#current day below
+#currentday=today.strftime("%d")
+
+#previous day below
+currentday=today - timedelta(days = 2)
+currentday=currentday.strftime("%d")
+
+month=today.strftime("%b").upper()
+dir=config['path']['rootDir']
+year=str(today.strftime("%Y"))
+currentdirectory = dir+month+"_"+year
+if month=='JAN':
+    prevyear=str(int(str(today.strftime("%Y")))-1)
+else:
+    prevyear=year
+
+olddirectory=dir+prevmonth+"_"+prevyear
+instancecount=0
+
+'''Getting files into lists'''
+currentdirectoryfilelist=[]
+olddirectoryfilelist=[]
+
+'''Collecting all the old files into a list from old directory'''
+for filename in os.listdir(olddirectory):
+    olddirectoryfilelist.append(olddirectory + "\\" + filename)
+
+'''Collecting all the new files into a list from currrent directory'''
+for filename in os.listdir(currentdirectory+"\\"+"input"):
+    currentdirectoryfilelist.append(currentdirectory+"\\"+"input"+"\\"+filename)
+
+'''checking if output folder exists. If not exists: create output folder'''
+isFile = os.path.isfile(currentdirectory+"\\"+config['path']['outFolder'])
+if not isFile:
+    try:
+        os.mkdir(currentdirectory+"\\"+config['path']['outFolder'])
+    except:
+        pass
+
+'''Processing each file by calling class'''
+outputfielist=[]
+for j in currentdirectoryfilelist:
+    newfile = j
+    print(newfile)
+    outputfile = currentdirectory  +"\\"+config['path']['outFolder'] + "\\" +str(newfile).split("\\")[-1].split("_")[0]+"_"+str(month) + "-" + str(currentday) + "-" + str(year) + ".xlsx"
+    outputfielist.append(outputfile)
+    oldbatchfilelist = []
+    for i in olddirectoryfilelist:
+        if (str(newfile).split("\\")[-1]).split("_")[0] in i:
+            oldbatchfilelist.append(i)
+    for k in oldbatchfilelist:
+        oldfile = k
+        instancecount = instancecount + 1
+        print(oldfile, newfile)
+        if "WORKAROUND" in oldfile or "WORKAROUND" in newfile:
+            pass
+        else:
+            obj1 = partmatching(oldfile, newfile, outputfile,instancecount)
+            try:
+                obj1.statusmatching()
+            except:
+                print('please check the file ',oldfile,' and ',newfile,' instance count: ',instancecount)
+                wb = openpyxl.load_workbook(outputfile)
+                ws=wb['QA']
+                ws.append(['not processed',"","","",(oldfile.split("\\")[-1]).split("_")[0]])
+                wb.save(outputfile)
+                pass
+
+
+'''
+Removing Duplicate entries from the QA output file
+'''
+for outputfile in outputfielist:
+    file=outputfile
+    df=pd.read_excel(file,sheet_name="QA")
+    df1=df.drop_duplicates()
+    df2=pd.DataFrame
+    dfAdded= df1[df1['MFR_PART_OPERATION']=='Added']
+    dfDeleted= df1[df1['MFR_PART_OPERATION']=='Deleted']
+    dfStatusChange= df1[df1['MFR_PART_OPERATION']=='Status Changed']
+
+    '''removing added parts from Added dataframe which are also in status changed Dataframe'''
+    for index,row in dfAdded.iterrows():
+        if row['MFR_PART_NUMBER'] not in dfStatusChange.values:
+            df2=dfAdded.append(row)
+        else:
+            pass
+    '''removing duplicates from deleted dataframe'''
+    dfDeleted.sort_values("MFR_PART_NUMBER",inplace=True)
+    dfDeleted.drop_duplicates(keep=False,inplace=True)
+
+    '''Appending all dataframes. i.e., Status changed,Added and deleted'''
+    df3=dfStatusChange.append([df2,dfDeleted])
+
+    '''Writing to excel'''
+    df3.to_excel(outputfile, sheet_name='QAReport',engine="openpyxl",index=False)
+
+
+
+
